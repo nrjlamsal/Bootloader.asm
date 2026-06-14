@@ -106,6 +106,10 @@ gdt_pointer:
     or al, 2
     out 0x92, al
 
+    mov eax,cr4
+    or eax,0b100000; enable PAE(Physical Address Extension)
+    mov cr4,eax
+
 
     jmp code_segment:0x10000
 
