@@ -1,13 +1,11 @@
 bits 16
 ORG 0x7C00
 
-; GDT selectors: byte offset of each descriptor within the GDT
-; Null=0x00, Code=0x08, Data=0x10
 code_segment equ 0x08    ; code descriptor selector
 data_segment equ 0x10    ; data descriptor selector
 
 KERNEL_LOAD_SEG equ 0x1000   ; ES segment where kernel is loaded  (physical 0x10000)
-KERNEL_SECTORS  equ 1        ; number of sectors to read (1 = 512 bytes, increase later)
+KERNEL_SECTORS  equ 1        ; number of sectors to read (1 = 512 bytes)
 
 
 start:
@@ -19,13 +17,11 @@ start:
     mov sp, 0x7C00
     sti
 
-    ; Save boot drive number (BIOS puts it in DL on entry)
+    
+    ; Save boot drive number from dl register
     mov [boot_drive], dl
 
-; ------------------------------------------------------------------
-; DISK READ: load kernel sectors from disk into memory at 0x10000
-; Uses BIOS INT 13h, AH=02h (CHS mode)
-; ------------------------------------------------------------------
+; DISK READ: load kernel sectors from disk into memory at 0x10000 
 load_kernel:
     mov ax, KERNEL_LOAD_SEG   ; destination segment
     mov es, ax                ; ES = 0x1000
@@ -37,7 +33,6 @@ load_kernel:
     mov cl, 2                 ; sector 2 (boot sector is sector 1, kernel starts at 2)
     mov dh, 0                 ; head 0
     mov dl, [boot_drive]      ; drive number saved from BIOS
-
     int 0x13                  ; call BIOS disk service
 
     jc disk_error             ; CF=1 means error occurred
@@ -55,20 +50,17 @@ disk_error:
     int 0x10
     hlt
 
-; ------------------------------------------------------------------
 load_gdt:
    cli
    lgdt [gdt_pointer]
    mov eax, cr0 
-   or eax, 0x1
+   or eax, 0x1 ; enable PM(bit 0 of cr0 register)
    mov cr0, eax
    jmp code_segment:protected_mode 
 
-; ------------------------------------------------------------------
 ; Data
 boot_drive: db 0             ; storage for BIOS boot drive number
 
-; ------------------------------------------------------------------
  gdt_start:
   ;Null descriptor
     dd 0x00000000, 0x00000000
@@ -98,7 +90,7 @@ gdt_pointer:
     dw gdt_end - gdt_start - 1  ; Size of GDT (limit) - 16 bit
     dd gdt_start                 ; Address of GDT - 32 bit
 
-bits 32
+  bits 32
 
    protected_mode:
     mov ax, data_segment
@@ -110,12 +102,11 @@ bits 32
     mov ebp, 0x9C00
     mov esp, ebp
 
-    in al, 0x92          ; enable A20 gate via port 0x92
+    in al, 0x92          ; enable A20 gate via port 0x92 to address upper 1mb of memory
     or al, 2
     out 0x92, al
 
-    ; Jump to kernel loaded at physical 0x10000
-    ; Far jump to flush the instruction pipeline with the correct CS selector
+
     jmp code_segment:0x10000
 
 times 510-($-$$) db 0 
