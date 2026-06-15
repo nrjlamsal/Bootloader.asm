@@ -120,7 +120,7 @@ gdt_pointer:
     mov eax,PML4_ADDR ; loaded cr3 with physical address of PML4
     mov cr3,eax
 
-    
+
 
     
 
@@ -142,7 +142,7 @@ gdt_pointer:
     ;  Link PDPT to PD (Present + Read+Write = bit 0 and bit 1 = 3)
     mov dword [PDPT_ADDR], PD_ADDR | 3
     
-    ;  Map the 2MB in the PD as a Huge Page
+    ;  Map the 2MB in the PD as bit 7 =1 means PD entry maps to 2mb page
     ; (Present + Read+Write + Huge Page bit 7 = 10000011 binary = 0x83)
     mov dword [PD_ADDR], 0x83
 
