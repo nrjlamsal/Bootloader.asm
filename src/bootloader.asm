@@ -8,6 +8,11 @@ KERNEL_LOAD_SEG equ 0x1000   ; ES segment where kernel is loaded  (physical 0x10
 KERNEL_SECTORS  equ 1        ; number of sectors to read (1 = 512 bytes)
 
 
+PML4_ADDR   equ 0x1000
+PDPT_ADDR   equ 0x2000
+PD_ADDR     equ 0x3000
+
+
 start:
     cli
     mov ax, 0x00
@@ -107,8 +112,44 @@ gdt_pointer:
     out 0x92, al
 
     mov eax,cr4
-    or eax,0b100000; enable PAE(Physical Address Extension)
+    or eax,0b100000   ; enable PAE(Physical Address Extension)
     mov cr4,eax
+
+    call setup_page_tables
+
+    mov eax,PML4_ADDR ; loaded cr3 with physical address of PML4
+    mov cr3,eax
+
+    
+
+    
+
+    
+
+    setup_page_tables:
+
+    ;Initialize page table
+
+    ; Zero out all 3 tables 3*4096 = 12288 bytes  
+    mov edi, PML4_ADDR
+    mov ecx, 3072; 12288/4=3072  double word
+    xor eax, eax
+    rep stosd
+    
+    ; Link PML4 to PDPT (Present + Read+Write = bit 0 and bit 1 = 3)
+    mov dword [PML4_ADDR], PDPT_ADDR | 3
+    
+    ;  Link PDPT to PD (Present + Read+Write = bit 0 and bit 1 = 3)
+    mov dword [PDPT_ADDR], PD_ADDR | 3
+    
+    ;  Map the 2MB in the PD as a Huge Page
+    ; (Present + Read+Write + Huge Page bit 7 = 10000011 binary = 0x83)
+    mov dword [PD_ADDR], 0x83
+
+    ret
+
+
+
 
 
     jmp code_segment:0x10000
