@@ -1,4 +1,4 @@
-
+; kernel.asm
 
 bits 32
 org 0x10000             ; we are physically at 0x10000 in RAM
