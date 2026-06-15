@@ -4,6 +4,7 @@ ORG 0x7C00
 code_segment equ 0x08    ; code descriptor selector
 data_segment equ 0x10    ; data descriptor selector
 
+
 KERNEL_LOAD_SEG equ 0x1000   ; ES segment where kernel is loaded  (physical 0x10000)
 KERNEL_SECTORS  equ 1        ; number of sectors to read (1 = 512 bytes)
 
@@ -66,12 +67,12 @@ load_gdt:
 ; Data
 boot_drive: db 0             ; storage for BIOS boot drive number
 
- gdt_start:
+gdt_start:
   ;Null descriptor
     dd 0x00000000, 0x00000000
 
     ; Code segment
- gdt_code:
+gdt_code:
     dw 0xffff    ; Limit (bits 0-15)
     dw 0x0       ; Base (bits 0-15)
     db 0x0       ; Base (bits 16-23)
@@ -93,11 +94,42 @@ gdt_end:
 ; GDT pointer
 gdt_pointer:
     dw gdt_end - gdt_start - 1  ; Size of GDT (limit) - 16 bit
-    dd gdt_start                 ; Address of GDT - 32 bit
+    dd gdt_start                 ; Address of 32 GDT - 32 bit
 
-  bits 32
+;------------------------------boundry------------------------------------
+    ; 64-bit GDT
+gdt_64_start:
+  ;Null descriptor
+    dd 0x00000000, 0x00000000
 
-   protected_mode:
+    ; 64-bit Code segment
+ gdt_64_code:
+    dw 0x0000    ; Limit (bits 0-15)
+    dw 0x0000      ; Base (bits 0-15)
+    db 0x00      ; Base (bits 16-23)
+    db 10011010b ; Access byte (Present, Ring 0, Code, Executable, Readable)
+    db 00100000b ; Flags (4KB granularity) + Limit (bits 16-19)
+    db 0x00      ; Base (bits 24-31)
+
+    ; Data Segment
+    gdt_64_data:
+    dw 0x0000    ; Limit (bits 0-15)
+    dw 0x0000       ; Base (bits 0-15)
+    db 0x00       ; Base (bits 16-23)
+    db 10010010b ; Access byte (Present, Ring 0, Data, Writable)
+    db 00100000b ; Flags (4KB granularity) + Limit (bits 16-19)
+    db 0x00       ; Base (bits 24-31)
+
+gdt_64_end:
+
+; GDT pointer
+gdt_64_pointer:
+    dw gdt_64_end - gdt_64_start - 1  ; Size of GDT (limit) - 16 bit
+    dd gdt_64_start                 ; Address of 64 bit GDT - 32 bit
+
+bits 32
+
+protected_mode:
     mov ax, data_segment
     mov ds, ax
     mov es, ax
@@ -125,13 +157,19 @@ gdt_pointer:
     or eax, 1 << 8
     wrmsr
 
+    ;time to load 64 bit GDT then enable paging then jump to 64 bit code segment 
+
+    lgdt [gdt_64_pointer]
+
+    ;enable paging
+
+    mov eax,cr0
+    or eax,0x80000000 ; Enable paging(Bit 31)
+    mov cr0,eax
 
 
+    jmp code_segment:long_mode_entry
     
-
-    jmp code_segment:0x10000
-    
-
     setup_page_tables:
 
     ;Initialize page table
@@ -153,6 +191,23 @@ gdt_pointer:
     mov dword [PD_ADDR], 0x83
 
     ret
+
+
+    bits 64
+long_mode_entry:
+
+    mov ax, 0x0010
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov fs, ax
+    mov gs, ax
+    mov ebp, 0x9C00
+    mov esp, ebp
+
+
+    
+
 
 
 
