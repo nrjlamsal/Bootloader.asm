@@ -202,8 +202,10 @@ long_mode_entry:
     mov ss, ax
     mov fs, ax
     mov gs, ax
-    mov ebp, 0x9C00
-    mov esp, ebp
+   ; stack is already set up by bootloader at 0x9C00 in 32-bit mode
+   
+
+    jmp 0x10000 ; jmp to kernel's 0x10000 entry point which is kernel_entry
 
 
     
