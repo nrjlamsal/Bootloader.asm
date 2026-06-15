@@ -120,10 +120,16 @@ gdt_pointer:
     mov eax,PML4_ADDR ; loaded cr3 with physical address of PML4
     mov cr3,eax
 
+     mov ecx, 0xC0000080 ; enable long mode
+    rdmsr
+    or eax, 1 << 8
+    wrmsr
+
 
 
     
 
+    jmp code_segment:0x10000
     
 
     setup_page_tables:
@@ -152,7 +158,6 @@ gdt_pointer:
 
 
 
-    jmp code_segment:0x10000
 
 times 510-($-$$) db 0 
 dw 0xaa55
